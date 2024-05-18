@@ -21,9 +21,9 @@ const addInput = z.object({
 });
 
 const updateInput = z.object({
-    name: z.string(),
-    price: z.number(),
-    quantity: z.number()
+    name: z.string().optional(),
+    price: z.number().optional(),
+    quantity: z.number().optional()
 });
 
 const manageInput = z.object({
@@ -58,7 +58,6 @@ adminRoutes.post("/addItem" , async (req , res) =>
         {
             inputData.quantity = data.quantity;
         }
-        
         const item = await prismaClient.grocery_items.create({
         data : {
             name : data.name,
@@ -95,45 +94,45 @@ adminRoutes.get("/allItems" , async (req , res) =>
 
 //Update a Grocery Item
 
-adminRoutes.put("/updateItem/:id" , async(req , res) =>
-{
+adminRoutes.put("/updateItem/:id" , async (req , res) => {
     const item_id = Number(req.params.id);
     const data = req.body;
 
-    const {success} = updateInput.safeParse(data); //valdiating inputs
+    const { success } = updateInput.safeParse(data); // validating inputs
 
-    
-    if(item_id === undefined)
-    {
-        return res.status(400).json({message : "item id not found"});
-        
+    if (item_id === undefined) {
+        return res.status(400).json({ message : "item id not found" });
     }
 
-     if(!success)
-    {
-        return res.status(400).json({message : "incorrect inputs"});
+    if (!success) {
+        return res.status(400).json({ message : "incorrect inputs" });
     }
-    
-    try
-    {
-        const updatedItem = await prismaClient.grocery_items.update({
-        where: {
-            id : item_id
-        },
-        data : {
-            name : data.name,
-            price: data.price,
-            quantity : data.quantity
-        }
+
+    try {
+        const existingItem = await prismaClient.grocery_items.findUnique({
+            where: { id: item_id }
         });
 
-          return res.status(200).send({message : "item updated successfully" , item : updatedItem});
-    }catch(err)
-    {
-        return res.status(500).json({message : "error occured while updating item"});
+        if (!existingItem) {
+            return res.status(404).json({ message: "Item not found" });
+        }
 
+        const updatedItem = await prismaClient.grocery_items.update({
+            where: { id: item_id },
+            data: {
+                ...existingItem, 
+                ...data         
+            }
+        });
+
+        return res.status(200).json({
+            message: "Item updated successfully",
+            item: updatedItem
+        });
+    } catch (err) {
+        return res.status(500).json({ message: "Error occurred while updating item" });
     }
-})
+});
 
 
 //manage levels(Update quantity)
